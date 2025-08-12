@@ -1,14 +1,20 @@
-import { useEffect, useMemo, useRef, useState, createContext, useContext,  useCallback } from "react";
+import React, { useEffect, useMemo, useRef, useState, createContext, useContext, forwardRef, useCallback } from "react";
 import { BrowserRouter as Router, Routes, Route, NavLink, Link, useLocation } from "react-router-dom";
 import { motion, useReducedMotion } from "framer-motion";
 import doctorImg from "./doctor.png";
-
-
+import AboutUs from "./pages/AboutUs";
+import Doctors from "./pages/Doctors";
+import HospitalsAndCenters from "./pages/HospitalsAndCenters";
+import Destination from "./pages/Destination";
+import Register from "./pages/Register";
+import Login from "./pages/Login";
 /*****************************************************************************************
- * HealthTrip — v11
- *  • Fixes TypeScript & ESLint errors (no 'any', correct refs, deps).
- *  • Adds Teleconsultation & How to Apply sections (EN/AR) with full i18n.
- *  • Auto‑RTL: doctor image aligns LEFT in Arabic.
+import AboutUs from "./pages/AboutUs";
+* HealthTrip — v11 (Clean build)
+ * ---------------------------------------------------------------------------------------
+ *  • Fixes all TS/ESLint issues (no `any`, correct refs, no unused vars, deps stable).
+ *  • Adds Teleconsultation + Services + How to Apply sections (EN/AR, RTL aware).
+ *  • Doctor image flips to LEFT automatically in Arabic.
  *****************************************************************************************/
 
 /* ======================================================================================
@@ -66,9 +72,7 @@ function useScrollDirection(threshold = 8) {
 }
 
 /* IntersectionObserver reveal for non‑Motion elements */
-function useReveal<T extends HTMLElement>(
-  options: IntersectionObserverInit = { rootMargin: "0px 0px -10% 0px", threshold: 0.1 }
-) {
+function useReveal<T extends HTMLElement>(options: IntersectionObserverInit = { rootMargin: "0px 0px -10% 0px", threshold: 0.1 }) {
   const reduced = usePrefersReducedMotionHook();
   const ref = useRef<T | null>(null);
   const optsRef = useRef(options);
@@ -141,6 +145,18 @@ const STRINGS: Record<Lang, Record<string, string>> = {
     doctorsBody: "Meet highly rated specialists trusted by thousands of patients. Book with confidence.",
     viewProfile: "View profile →",
     bookAppointment: "Book appointment",
+
+    servicesTitle: "Our Services",
+    svc1T: "Treatment Packages",
+    svc1D: "Fixed, transparent pricing for common procedures.",
+    svc2T: "Travel & Visas",
+    svc2D: "Flight help, visas, and invitation letters.",
+    svc3T: "Accommodation",
+    svc3D: "Hotels or apartments near your hospital.",
+    svc4T: "Transfers",
+    svc4D: "Airport pickup and city transport.",
+    svc5T: "Medical Translation",
+    svc5D: "Certified interpreters and document translation.",
 
     teleTitle: "Teleconsultation",
     teleLead: "Schedule a voice or video call with a specialized doctor.",
@@ -234,10 +250,6 @@ const STRINGS: Record<Lang, Record<string, string>> = {
     badgeJci: "شركاء JCI",
     badgeTransparent: "تسعير شفاف",
 
-    teleTitle: "الاستشارة عن بُعد",
-    teleLead: "احجز مكالمة صوتية أو مرئية مع طبيب متخصص.",
-    teleCTA: "احجز مكالمة عبر الإنترنت",
-
     formSpec: "اختر التخصص",
     formCity: "اختر المدينة",
     formSearch: "بحث",
@@ -256,6 +268,22 @@ const STRINGS: Record<Lang, Record<string, string>> = {
     doctorsBody: "تعرّف على متخصصين موثوقين من آلاف المرضى واحجز بثقة.",
     viewProfile: "عرض الملف ←",
     bookAppointment: "احجز موعدًا",
+
+    servicesTitle: "خدماتنا",
+    svc1T: "باقات علاجية",
+    svc1D: "أسعار ثابتة وشفافة للإجراءات الشائعة.",
+    svc2T: "السفر والتأشيرات",
+    svc2D: "مساعدة في الرحلات والتأشيرات وخطابات الدعوة.",
+    svc3T: "الإقامة",
+    svc3D: "فنادق أو شقق قرب المستشفى.",
+    svc4T: "التنقلات",
+    svc4D: "استقبال من المطار والتنقل داخل المدينة.",
+    svc5T: "الترجمة الطبية",
+    svc5D: "مترجمون معتمدون وترجمة المستندات.",
+
+    teleTitle: "الاستشارة عن بُعد",
+    teleLead: "احجز مكالمة صوتية أو مرئية مع طبيب متخصص.",
+    teleCTA: "احجز مكالمة عبر الإنترنت",
 
     why: "لماذا مصر للعلاج؟",
     whyBody: "تميز طبي مع ضيافة أسطورية وتجارب تعافٍ لا تُنسى.",
@@ -356,15 +384,15 @@ const specialties: { key: string; icon: string; color: string }[] = [
 
 const cities = ["cairo", "dubai", "istanbul", "bangkok", "singapore"] as const;
 
-interface Doctor {
+type Doctor = {
   id: number;
   name: string;
   specialty: string;
   hospital: string;
   city: string;
-  rating: number; // 0..5
+  rating: number;
   avatar?: string;
-}
+};
 
 const bestDoctors: Doctor[] = [
   { id: 1, name: "Dr. Sara El-Shazly", specialty: "Cardiology", hospital: "Cairo Heart Center", city: "Cairo", rating: 4.9, avatar: "/avatars/doc1.png" },
@@ -462,9 +490,6 @@ const HeroCrossField = () => {
             <stop offset="0%" stopColor="#f6fbff" />
             <stop offset="100%" stopColor="#f8fbfe" />
           </linearGradient>
-          <filter id="crossShadow" x="-50%" y="-50%" width="200%" height="200%">
-            <feDropShadow dx="0" dy="2.5" stdDeviation="3.5" floodColor="#60a5fa" floodOpacity="0.25" />
-          </filter>
         </defs>
 
         <rect x="0" y="0" width="1200" height="800" fill="url(#heroGrad)" />
@@ -517,7 +542,7 @@ const NAV_LINKS = [
 
 function Navbar({ navOpen, setNavOpen }: { navOpen: boolean; setNavOpen: (v: boolean) => void }) {
   const dir = useScrollDirection();
-  const hidden = dir === "down" && window.scrollY > 14;
+  const hidden = dir === "down" && typeof window !== "undefined" && window.scrollY > 14;
   const linkBase = "px-1 rounded transition focus:outline-none focus:ring-2 focus:ring-blue-300";
   const { t } = useLang();
   return (
@@ -572,6 +597,8 @@ function Navbar({ navOpen, setNavOpen }: { navOpen: boolean; setNavOpen: (v: boo
 /* ======================================================================================
    HERO — Parallax, beams, orbs + Auto‑Carousel inside
 ====================================================================================== */
+type ParallaxStyle = React.CSSProperties & Record<'--px' | '--py', string>;
+
 function useParallaxVars(sectionRef: React.RefObject<HTMLElement | null>) {
   useEffect(() => {
     const el = sectionRef.current;
@@ -594,8 +621,6 @@ function useParallaxVars(sectionRef: React.RefObject<HTMLElement | null>) {
     return () => { el.removeEventListener("pointermove", onMove); if (raf) cancelAnimationFrame(raf); };
   }, [sectionRef]);
 }
-
-type CSSVars = React.CSSProperties & { ['--px']?: string | number; ['--py']?: string | number };
 
 function HeroAutoCarousel() {
   const { t } = useLang();
@@ -644,7 +669,7 @@ function Hero({ speciality, setSpeciality, city, setCity, onCTA }: { speciality:
   useParallaxVars(sectionRef);
 
   return (
-    <section ref={sectionRef} className="hero-parallax relative overflow-hidden bg-[#f8fbfe]" style={{ minHeight: "calc(var(--vh, 1vh) * 82)" }}>
+    <section ref={sectionRef as React.RefObject<HTMLElement>} className="hero-parallax relative overflow-hidden bg-[#f8fbfe]" style={{ minHeight: "calc(var(--vh, 1vh) * 82)" }}>
       {/* Background layers */}
       <HeroCrossField />
       <RandomCrossLayer count={120} seed={2025} opacity={0.75} />
@@ -653,8 +678,8 @@ function Hero({ speciality, setSpeciality, city, setCity, onCTA }: { speciality:
       {/* Beams & orbs */}
       <div className="hero-beam hero-beam-1" aria-hidden />
       <div className="hero-beam hero-beam-2" aria-hidden />
-      <div className="orb orb-a" aria-hidden data-parallax style={{ '--px': '18px', '--py': '10px' } as CSSVars} />
-      <div className="orb orb-b" aria-hidden data-parallax style={{ '--px': '-16px', '--py': '8px' } as CSSVars} />
+      <div className="orb orb-a" aria-hidden data-parallax style={{ "--px": "18px", "--py": "10px" } as ParallaxStyle} />
+      <div className="orb orb-b" aria-hidden data-parallax style={{ "--px": "-16px", "--py": "8px" } as ParallaxStyle} />
 
       <div className="relative z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -679,8 +704,8 @@ function Hero({ speciality, setSpeciality, city, setCity, onCTA }: { speciality:
               {/* CTA Row */}
               <div className="flex flex-wrap gap-3">
                 <motion.button type="button" whileTap={{ scale: 0.98 }} whileHover={prefersReduced ? undefined : { y: -2 }} className="btn-sheen bg-[#4d97c8] hover:bg-[#3071a9] text-white text-[16px] md:text-[18px] font-semibold px-6 md:px-7 py-2.5 md:py-3 rounded-lg shadow transition-all" onClick={onCTA}>
-                    {t("heroStart")}
-                  </motion.button>
+                  {t("heroStart")}
+                </motion.button>
                 <Link to="/doctors" className="px-6 md:px-7 py-2.5 md:py-3 border border-blue-200 text-blue-700 rounded-lg hover:bg-blue-50 text-[14px] md:text-[16px] transition">{t("heroFind")}</Link>
               </div>
 
@@ -688,7 +713,7 @@ function Hero({ speciality, setSpeciality, city, setCity, onCTA }: { speciality:
               <HeroAutoCarousel />
 
               {/* Glass search card */}
-              <div className="w-full mt-6 md:mt-7" data-parallax style={{ '--px': '10px', '--py': '6px' } as CSSVars}>
+              <div className="w-full mt-6 md:mt-7" data-parallax style={{ "--px": "10px", "--py": "6px" } as ParallaxStyle}>
                 <motion.div whileHover={prefersReduced ? undefined : { y: -4 }} className="w-full max-w-xl sm:max-w-2xl mx-auto lg:mx-0 glass-card rounded-xl shadow p-2 border border-blue-100">
                   <form className="grid grid-cols-1 sm:grid-cols-3 gap-2" onSubmit={(e) => e.preventDefault()}>
                     <label className="sr-only" htmlFor="speciality">Specialty</label>
@@ -713,7 +738,7 @@ function Hero({ speciality, setSpeciality, city, setCity, onCTA }: { speciality:
 
             {/* Right media spot */}
             <div className="hidden lg:block relative" aria-hidden>
-              <div className="ring-spot" data-parallax style={{ '--px': '-14px', '--py': '10px' } as CSSVars} />
+              <div className="ring-spot" data-parallax style={{ "--px": "-14px", "--py": "10px" } as ParallaxStyle} />
             </div>
           </div>
         </div>
@@ -752,8 +777,8 @@ function SpecialtiesCarousel() {
   useEffect(() => {
     const node = trackRef.current;
     if (!node) return;
-    const onEnter = () => (hovering.current = true);
-    const onLeave = () => (hovering.current = false);
+    const onEnter = () => { hovering.current = true; };
+    const onLeave = () => { hovering.current = false; };
     node.addEventListener("mouseenter", onEnter);
     node.addEventListener("mouseleave", onLeave);
     node.addEventListener("focusin", onEnter);
@@ -955,6 +980,39 @@ function BestDoctorsSection() {
 }
 
 /* ======================================================================================
+   SERVICES
+====================================================================================== */
+function ServicesSection() {
+  const { t } = useLang();
+  const services = [
+    { icon: "💼", t: t("svc1T"), d: t("svc1D") },
+    { icon: "🛂", t: t("svc2T"), d: t("svc2D") },
+    { icon: "🏨", t: t("svc3T"), d: t("svc3D") },
+    { icon: "🚐", t: t("svc4T"), d: t("svc4D") },
+    { icon: "🗣️", t: t("svc5T"), d: t("svc5D") },
+  ];
+  return (
+    <section className="relative bg-white py-16 md:py-24 overflow-hidden">
+      <CrossSprinkles count={40} seed={29} className="opacity-20" />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-center mb-10 md:mb-14">
+          <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900">{t("servicesTitle")}</h2>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+          {services.map((s, i) => (
+            <motion.div key={i} initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.3 }} transition={{ duration: 0.45, delay: i * 0.05 }} className="bg-white border border-blue-100 rounded-2xl p-6 shadow-sm hover:shadow-2xl">
+              <div className="text-4xl mb-2" aria-hidden>{s.icon}</div>
+              <h3 className="font-semibold text-gray-900">{s.t}</h3>
+              <p className="text-gray-600 mt-1">{s.d}</p>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ======================================================================================
    WHY VISIT EGYPT
 ====================================================================================== */
 function WhyEgyptSection() {
@@ -1041,9 +1099,98 @@ function HowToApplySection({ onCTA }: { onCTA: () => void }) {
   );
 }
 
+/* ======================================================================================
+   CONTACT — forwardRef so CTA scroll can focus
+===========================================================2222222222222222222222222222=========================== */
+type NoProps = Record<string, never>;
+
+const ContactSection = forwardRef<HTMLDivElement, NoProps>(function ContactSection(_, ref) {
+  const [sent, setSent] = useState(false);
+  const prefersReduced = useReducedMotion();
+  const { t } = useLang();
+
+  const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const form = e.currentTarget as HTMLFormElement & { name: HTMLInputElement };
+    const fd = new FormData(form);
+    setSent(true);
+    setTimeout(() => setSent(false), 3500);
+    form.reset();
+     
+    console.log("Contact form submitted", Object.fromEntries(fd.entries()));
+  };
+
+  return (
+    <section ref={ref} className="relative py-16 md:py-24 overflow-hidden bg-white">
+      <CrossSprinkles count={40} seed={77} className="opacity-15" />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <motion.div initial={prefersReduced ? false : { opacity: 0, y: 16 }} whileInView={prefersReduced ? undefined : { opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.25 }} transition={{ duration: 0.5 }} className="text-center mb-10 md:mb-14">
+          <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900">{t("contactHow")}</h2>
+          <p className="text-gray-600 mt-3 max-w-2xl mx-auto">{t("contactBody")}</p>
+        </motion.div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
+          <div className="lg:col-span-2 bg-white border border-blue-100 rounded-2xl shadow p-6">
+            <form onSubmit={onSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="name" className="text-sm text-gray-700">{t("fullName")}</label>
+                <input id="name" name="name" required className="mt-1 w-full h-11 px-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-200 focus:border-blue-400 outline-none bg-gray-50" />
+              </div>
+              <div>
+                <label htmlFor="email" className="text-sm text-gray-700">{t("emailLabel")}</label>
+                <input id="email" name="email" type="email" required className="mt-1 w-full h-11 px-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-200 focus:border-blue-400 outline-none bg-gray-50" />
+              </div>
+              <div className="md:col-span-2">
+                <label htmlFor="message" className="text-sm text-gray-700">{t("messageLabel")}</label>
+                <textarea id="message" name="message" rows={4} required className="mt-1 w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-200 focus:border-blue-400 outline-none bg-gray-50" />
+              </div>
+              <div className="md:col-span-2 flex items-center justify-between gap-3">
+                <p role="status" className={`text-sm ${sent ? "text-green-600" : "text-gray-500"}`}>{sent ? t("thanks") : t("responseTime")}</p>
+                <motion.button whileTap={{ scale: 0.98 }} className="h-11 px-5 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700">{t("send")}</motion.button>
+              </div>
+            </form>
+          </div>
+
+          <div className="bg-white border border-blue-100 rounded-2xl shadow p-6">
+            <ul className="space-y-4">
+              <li className="flex items-start gap-3">
+                <span className="mt-1">📞</span>
+                <div>
+                  <p className="font-medium text-gray-900">{t("callUs")}</p>
+                  <a href="tel:+201234567890" className="text-blue-700 hover:text-blue-900">+20 123 456 7890</a>
+                </div>
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="mt-1">💬</span>
+                <div>
+                  <p className="font-medium text-gray-900">{t("whatsapp")}</p>
+                  <a href="https://wa.me/201234567890" target="_blank" rel="noreferrer" className="text-blue-700 hover:text-blue-900">{t("whatsappAction")}</a>
+                </div>
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="mt-1">✉️</span>
+                <div>
+                  <p className="font-medium text-gray-900">{t("email")}</p>
+                  <a href="mailto:hello@healthtrip.example" className="text-blue-700 hover:text-blue-900">hello@healthtrip.example</a>
+                </div>
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="mt-1">📍</span>
+                <div>
+                  <p className="font-medium text-gray-900">{t("office")}</p>
+                  <p className="text-gray-600">{t("cityCairo")}</p>
+                </div>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+});
 
 /* ======================================================================================
-   TELECONSULTATION — matches the screenshot style
+   TELECONSULTATION — matches your screenshot style
 ====================================================================================== */
 function TeleconsultationSection({ onCTA }: { onCTA: () => void }) {
   const { t } = useLang();
@@ -1053,8 +1200,7 @@ function TeleconsultationSection({ onCTA }: { onCTA: () => void }) {
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-8">
           <h2 className="text-3xl md:4xl font-extrabold tracking-[0.02em] text-gray-900">
-            {t("teleTitle")}
-            <span className="align-super text-blue-500 text-xl pl-1">＋</span>
+            {t("teleTitle")}<span className="align-super text-blue-500 text-xl pl-1">＋</span>
           </h2>
         </div>
 
@@ -1121,57 +1267,11 @@ function ScrollTopBtn() {
 /* ======================================================================================
    PAGES
 ====================================================================================== */
-function Placeholder({ title }: { title: string }) {
-  const { t } = useLang();
-  return (
-    <main className="min-h-screen p-8">
-      <h1 className="text-3xl font-bold mb-4">{title}</h1>
-      <p className="text-gray-600">{t("comingSoon")}</p>
-      <Footer />
-    </main>
-  );
-}
 
-function DoctorsPage() {
-  return (
-    <main>
-      <BestDoctorsSection />
-      <Footer />
-    </main>
-  );
-}
-function ContactPage() {
-  const contactRef = useRef<HTMLElement | null>(null);
-  useEffect(() => {
-    contactRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, []);
-  return (
-    <main>
 
-      <Footer />
-    </main>
-  );
-}
-function WhyEgyptPage() {
-  return (
-    <main>
-      <WhyEgyptSection />
-      <Footer />
-    </main>
-  );
-}
-function HospitalsPage() {
-  const { t } = useLang();
-  return <Placeholder title={t("navHospitals")} />;
-}
-function RegisterPage() {
-  const { t } = useLang();
-  return <Placeholder title={t("register")} />;
-}
-function LoginPage() {
-  const { t } = useLang();
-  return <Placeholder title={t("login")} />;
-}
+
+
+
 
 /* ======================================================================================
    APP ROOT + CTA scroll wiring + global styles for hero effects & RTL
@@ -1189,7 +1289,7 @@ function App() {
   const [speciality, setSpeciality] = useState("");
   const [city, setCity] = useState("");
   const [navOpen, setNavOpen] = useState(false);
-  const contactRef = useRef<HTMLElement | null>(null);
+  const contactRef = useRef<HTMLDivElement | null>(null);
 
   const onCTA = () => {
     contactRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -1211,10 +1311,11 @@ function App() {
               <SpecialtiesCarousel />
               <AboutSection />
               <BestDoctorsSection />
+              <ServicesSection />
               <WhyEgyptSection />
               <TeleconsultationSection onCTA={onCTA} />
               <HowToApplySection onCTA={onCTA} />
-       
+              <ContactSection />
               <Footer />
               <style>{`
                 .scrollbar-hide::-webkit-scrollbar { display: none; }
@@ -1275,13 +1376,13 @@ function App() {
             </main>
           } />
           {/* Dedicated routes */}
-         
-          <Route path="/doctors" element={<DoctorsPage />} />
-          <Route path="/hospitals-and-centers" element={<HospitalsPage />} />
-          <Route path="/contact-us" element={<ContactPage />} />
-          <Route path="/destination" element={<WhyEgyptPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-          <Route path="/login" element={<LoginPage />} />
+          <Route path="/about-us" element={<AboutUs />} />
+          <Route path="/doctors" element={<Doctors />} />
+          <Route path="/hospitals-and-centers" element={<HospitalsAndCenters />} />
+          <Route path="/contact-us" element={<ContactSection />} />
+          <Route path="/destination" element={<Destination />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/login" element={<Login />} />
         </Routes>
       </Router>
     </LangProvider>
