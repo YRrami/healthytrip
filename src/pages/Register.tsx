@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState, ChangeEvent, FormEvent, memo } from "react";
+import React, { useCallback, useMemo, useState, type ChangeEvent, type FormEvent, memo, type JSX } from "react";
 
 /*
   Register — Lightweight 5‑Step Wizard (TypeScript, no Framer Motion)
